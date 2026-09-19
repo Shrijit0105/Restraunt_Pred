@@ -22,7 +22,7 @@ The project focuses on:
 
 ---
 
-~~ Project Structure
+## Project Structure
 
 Restaurant-Rating-Prediction/
 
