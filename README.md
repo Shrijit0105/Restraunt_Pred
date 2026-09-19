@@ -124,8 +124,8 @@ The models are evaluated using:
 
 ## Results
 
-The project compares multiple regression models and analyzes:
-
+##The project compares multiple regression models and analyzes:
+##
 - Prediction accuracy
 - Model performance
 - Important features influencing restaurant ratings
