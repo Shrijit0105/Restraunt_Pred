@@ -88,27 +88,9 @@ Target Variable:
 
 ---
 
-## Regression Models
-
-Models evaluated in this project include:
-
-- Linear Regression
-- Decision Tree Regressor
-- Random Forest Regressor
-- Gradient Boosting Regressor
-
 ---
 
-## Evaluation Metrics
 
-The models are evaluated using:
-
-- Mean Absolute Error (MAE)
-- Mean Squared Error (MSE)
-- Root Mean Squared Error (RMSE)
-- R² Score
-
----
 
 ## Libraries Used
 
@@ -122,25 +104,10 @@ The models are evaluated using:
 
 ---
 
-## Results
-
-##The project compares multiple regression models and analyzes:
-##
-- Prediction accuracy
-- Model performance
-- Important features influencing restaurant ratings
-
-The best-performing model is selected based on evaluation metrics.
 
 ---
 
-## Future Improvements
 
-- Hyperparameter tuning
-- Cross-validation
-- SHAP-based model explainability
-- Ensemble learning
-- Deployment using Streamlit or Flask
 
 ---
 
@@ -150,10 +117,6 @@ Through this project, I practiced:
 
 - Data preprocessing
 - Feature engineering
-- Regression algorithms
-- Model evaluation
-- Feature importance analysis
-- Building reproducible machine learning workflows
 
 ---
 
