@@ -1,16 +1,10 @@
-name: Project Activity & Status
+name: Generate Project Status UI
 
 on:
   push:
     branches:
       - main
       - master
-
-  pull_request:
-    types:
-      - opened
-      - closed
-      - synchronize
 
   workflow_dispatch:
 
@@ -21,266 +15,568 @@ permissions:
   contents: write
 
 jobs:
-  project-status:
-    name: Detect Project Status
+
+  generate-ui:
+
     runs-on: ubuntu-latest
 
     steps:
 
-      # --------------------------------------------------
-      # 1. Checkout repository
-      # --------------------------------------------------
+      # -------------------------------
+      # Checkout repository
+      # -------------------------------
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # --------------------------------------------------
-      # 2. Detect project activity
-      # --------------------------------------------------
+      # -------------------------------
+      # Generate SVG UI
+      # -------------------------------
 
-      - name: Detect project stage
+      - name: Generate Project Status SVG
         shell: bash
         run: |
 
-          echo "Detecting project activity..."
+          mkdir -p assets
 
-          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
 
-          CHANGED_FILES=$(git diff-tree \
-            --no-commit-id \
-            --name-only \
-            -r HEAD)
+          LAST_COMMIT=$(git log -1 --pretty=%s)
 
-          echo "Latest commit:"
-          echo "$COMMIT_MESSAGE"
+          AUTHOR=$(git log -1 --pretty=%an)
 
-          echo ""
-          echo "Changed files:"
-          echo "$CHANGED_FILES"
+          COMMIT_DATE=$(git log -1 --format=%aI)
 
-          STAGE="Project Development"
-          FOCUS="General Project Development"
-
-          if echo "$CHANGED_FILES" | grep -Eqi \
-            "01_EDA|eda|exploration|visualization"; then
-
-            STAGE="Exploratory Data Analysis"
-            FOCUS="Exploratory Data Analysis"
-
-          elif echo "$CHANGED_FILES" | grep -Eqi \
-            "02_Preprocessing|preprocess|preprocessing|clean"; then
-
-            STAGE="Data Preprocessing"
-            FOCUS="Data Cleaning & Preprocessing"
-
-          elif echo "$CHANGED_FILES" | grep -Eqi \
-            "feature|engineering"; then
-
-            STAGE="Feature Engineering"
-            FOCUS="Feature Engineering"
-
-          elif echo "$CHANGED_FILES" | grep -Eqi \
-            "03_Model|model|train|training"; then
-
-            STAGE="Model Development"
-            FOCUS="Model Training & Experiments"
-
-          elif echo "$CHANGED_FILES" | grep -Eqi \
-            "04_Model_Evaluation|evaluation|evaluate|metric"; then
-
-            STAGE="Model Evaluation"
-            FOCUS="Model Evaluation & Comparison"
-
-          elif echo "$CHANGED_FILES" | grep -Eqi \
-            "models/|\.pkl$|\.joblib$"; then
-
-            STAGE="Model Development"
-            FOCUS="Trained Model Development"
-
-          elif echo "$CHANGED_FILES" | grep -Eqi \
-            "api|app|deployment|docker|Dockerfile"; then
-
-            STAGE="Deployment"
-            FOCUS="Deployment & Integration"
-
-          fi
-
-          echo "STAGE=$STAGE" >> "$GITHUB_ENV"
-          echo "FOCUS=$FOCUS" >> "$GITHUB_ENV"
-
-      # --------------------------------------------------
-      # 3. Calculate repository progress
-      # --------------------------------------------------
-
-      - name: Calculate project progress
-        shell: bash
-        run: |
-
-          CLEANING=100
-          EDA=100
-          FEATURES=85
-          PREPROCESSING=85
-          TRAINING=60
-          EVALUATION=40
-          OPTIMIZATION=20
-          DEPLOYMENT=0
-
-          if [ "$STAGE" = "Exploratory Data Analysis" ]; then
-            EDA=100
-          fi
-
-          if [ "$STAGE" = "Data Preprocessing" ]; then
-            PREPROCESSING=90
-          fi
-
-          if [ "$STAGE" = "Feature Engineering" ]; then
-            FEATURES=90
-          fi
-
-          if [ "$STAGE" = "Model Development" ]; then
-            TRAINING=75
-          fi
-
-          if [ "$STAGE" = "Model Evaluation" ]; then
-            TRAINING=100
-            EVALUATION=75
-          fi
-
-          if [ "$STAGE" = "Deployment" ]; then
-            TRAINING=100
-            EVALUATION=100
-            OPTIMIZATION=100
-            DEPLOYMENT=50
-          fi
-
-          echo "CLEANING=$CLEANING" >> "$GITHUB_ENV"
-          echo "EDA=$EDA" >> "$GITHUB_ENV"
-          echo "FEATURES=$FEATURES" >> "$GITHUB_ENV"
-          echo "PREPROCESSING=$PREPROCESSING" >> "$GITHUB_ENV"
-          echo "TRAINING=$TRAINING" >> "$GITHUB_ENV"
-          echo "EVALUATION=$EVALUATION" >> "$GITHUB_ENV"
-          echo "OPTIMIZATION=$OPTIMIZATION" >> "$GITHUB_ENV"
-          echo "DEPLOYMENT=$DEPLOYMENT" >> "$GITHUB_ENV"
-
-      # --------------------------------------------------
-      # 4. Update README
-      # --------------------------------------------------
-
-      - name: Update project status
-        shell: bash
-        run: |
+          BRANCH=$(git branch --show-current)
 
           python3 <<'PY'
 
-          from pathlib import Path
           import os
+          from pathlib import Path
 
-          readme = Path("README.md")
-
-          text = readme.read_text(
-              encoding="utf-8"
+          commit_count = os.environ.get(
+              "COMMIT_COUNT",
+              "0"
           )
 
-          start_marker = "<!-- STATUS_START -->"
-          end_marker = "<!-- STATUS_END -->"
+          last_commit = os.environ.get(
+              "LAST_COMMIT",
+              "Repository activity"
+          )
 
-          stage = os.environ["STAGE"]
-          focus = os.environ["FOCUS"]
+          author = os.environ.get(
+              "AUTHOR",
+              "Unknown"
+          )
 
-          cleaning = int(os.environ["CLEANING"])
-          eda = int(os.environ["EDA"])
-          features = int(os.environ["FEATURES"])
-          preprocessing = int(os.environ["PREPROCESSING"])
-          training = int(os.environ["TRAINING"])
-          evaluation = int(os.environ["EVALUATION"])
-          optimization = int(os.environ["OPTIMIZATION"])
-          deployment = int(os.environ["DEPLOYMENT"])
-
-          def bar(value):
-
-              total = 20
-
-              filled = round(
-                  value / 100 * total
-              )
-
-              return (
-                  "█" * filled
-                  + "░" * (total - filled)
-              )
-
-          status = f"""<!-- STATUS_START -->
-
-          ## 🚧 Project Status
-
-          **Status:** 🚀 Active Development
-
-          **Current Stage:** 🤖 {stage}
-
-          **Current Focus:** 🔍 {focus}
-
-          ```text
-          Data Collection        ████████████████████ 100%
-          Data Cleaning          {bar(cleaning)} {cleaning}%
-          EDA                    {bar(eda)} {eda}%
-          Feature Engineering    {bar(features)} {features}%
-          Preprocessing          {bar(preprocessing)} {preprocessing}%
-          Model Training         {bar(training)} {training}%
-          Model Evaluation       {bar(evaluation)} {evaluation}%
-          Optimization           {bar(optimization)} {optimization}%
-          Deployment             {bar(deployment)} {deployment}%
-          ```
-
-          > 🔄 Automatically updated by GitHub Actions based on repository activity.
-
-          <!-- STATUS_END -->"""
-
-          status = status.replace(
-              "          ",
+          commit_date = os.environ.get(
+              "COMMIT_DATE",
               ""
           )
 
-          if (
-              start_marker in text
-              and end_marker in text
-          ):
+          branch = os.environ.get(
+              "BRANCH",
+              "main"
+          )
 
-              start = text.index(
-                  start_marker
-              )
+          # ---------------------------------
+          # SVG
+          # ---------------------------------
 
-              end = text.index(
-                  end_marker
-              ) + len(end_marker)
+          svg = f'''<svg
+          width="900"
+          height="430"
+          viewBox="0 0 900 430"
+          xmlns="http://www.w3.org/2000/svg">
 
-              text = (
-                  text[:start]
-                  + status
-                  + text[end:]
-              )
+          <defs>
 
-          else:
+            <linearGradient
+              id="bg"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%">
 
-              text += (
-                  "\n\n"
-                  + status
-                  + "\n"
-              )
+              <stop
+                offset="0%"
+                stop-color="#050505"/>
 
-          readme.write_text(
-              text,
+              <stop
+                offset="100%"
+                stop-color="#111111"/>
+
+            </linearGradient>
+
+            <filter
+              id="glow">
+
+              <feGaussianBlur
+                stdDeviation="3"
+                result="blur"/>
+
+              <feMerge>
+
+                <feMergeNode
+                  in="blur"/>
+
+                <feMergeNode
+                  in="SourceGraphic"/>
+
+              </feMerge>
+
+            </filter>
+
+            <style>
+
+              .title {{
+                font-family:
+                monospace;
+
+                font-size:
+                24px;
+
+                font-weight:
+                bold;
+
+                fill:
+                #ffffff;
+              }}
+
+              .subtitle {{
+                font-family:
+                monospace;
+
+                font-size:
+                12px;
+
+                fill:
+                #777777;
+              }}
+
+              .label {{
+                font-family:
+                monospace;
+
+                font-size:
+                11px;
+
+                fill:
+                #888888;
+              }}
+
+              .value {{
+                font-family:
+                monospace;
+
+                font-size:
+                14px;
+
+                fill:
+                #ffffff;
+              }}
+
+              .status {{
+                font-family:
+                monospace;
+
+                font-size:
+                13px;
+
+                font-weight:
+                bold;
+
+                fill:
+                #ffffff;
+              }}
+
+              .bar-bg {{
+                fill:
+                #252525;
+              }}
+
+              .bar {{
+                fill:
+                #ffffff;
+              }}
+
+              .pulse {{
+                animation:
+                pulse 1.6s
+                infinite;
+              }}
+
+              .scan {{
+                animation:
+                scan 4s
+                linear
+                infinite;
+              }}
+
+              @keyframes pulse {{
+
+                0% {{
+                  opacity: 1;
+                }}
+
+                50% {{
+                  opacity: 0.25;
+                }}
+
+                100% {{
+                  opacity: 1;
+                }}
+
+              }}
+
+              @keyframes scan {{
+
+                0% {{
+                  transform:
+                  translateX(-900px);
+                }}
+
+                100% {{
+                  transform:
+                  translateX(900px);
+                }}
+
+              }}
+
+            </style>
+
+          </defs>
+
+
+          <!-- Background -->
+
+          <rect
+            width="900"
+            height="430"
+            rx="18"
+            fill="url(#bg)"
+            stroke="#333333"/>
+
+
+          <!-- Animated scan -->
+
+          <rect
+            class="scan"
+            x="0"
+            y="0"
+            width="2"
+            height="430"
+            opacity="0.25"
+            fill="#ffffff"/>
+
+
+          <!-- Header -->
+
+          <text
+            x="40"
+            y="48"
+            class="title">
+
+            RESTAURANT RATING PREDICTION
+
+          </text>
+
+          <text
+            x="40"
+            y="70"
+            class="subtitle">
+
+            AI / ML PORTFOLIO PROJECT
+
+          </text>
+
+
+          <!-- Status -->
+
+          <circle
+            cx="790"
+            cy="48"
+            r="7"
+            fill="#ffffff"
+            class="pulse"
+            filter="url(#glow)"/>
+
+          <text
+            x="805"
+            y="53"
+            class="status">
+
+            ACTIVE
+
+          </text>
+
+
+          <!-- Pipeline -->
+
+          <text
+            x="40"
+            y="115"
+            class="label">
+
+            ML PIPELINE
+
+          </text>
+
+
+          <!-- Pipeline bars -->
+
+          <text
+            x="40"
+            y="145"
+            class="label">
+
+            DATA
+
+          </text>
+
+          <rect
+            x="90"
+            y="136"
+            width="120"
+            height="10"
+            rx="5"
+            class="bar-bg"/>
+
+          <rect
+            x="90"
+            y="136"
+            width="120"
+            height="10"
+            rx="5"
+            class="bar"/>
+
+
+          <text
+            x="240"
+            y="145"
+            class="label">
+
+            CLEANING
+
+          </text>
+
+          <rect
+            x="315"
+            y="136"
+            width="120"
+            height="10"
+            rx="5"
+            class="bar-bg"/>
+
+          <rect
+            x="315"
+            y="136"
+            width="120"
+            height="10"
+            rx="5"
+            class="bar"/>
+
+
+          <text
+            x="465"
+            y="145"
+            class="label">
+
+            FEATURES
+
+          </text>
+
+          <rect
+            x="540"
+            y="136"
+            width="120"
+            height="10"
+            rx="5"
+            class="bar-bg"/>
+
+          <rect
+            x="540"
+            y="136"
+            width="102"
+            height="10"
+            rx="5"
+            class="bar"/>
+
+
+          <text
+            x="690"
+            y="145"
+            class="label">
+
+            MODEL
+
+          </text>
+
+          <rect
+            x="745"
+            y="136"
+            width="115"
+            height="10"
+            rx="5"
+            class="bar-bg"/>
+
+          <rect
+            x="745"
+            y="136"
+            width="69"
+            height="10"
+            rx="5"
+            class="bar"/>
+
+
+          <!-- Current focus -->
+
+          <rect
+            x="40"
+            y="180"
+            width="820"
+            height="70"
+            rx="10"
+            fill="#0b0b0b"
+            stroke="#292929"/>
+
+          <text
+            x="60"
+            y="207"
+            class="label">
+
+            CURRENT FOCUS
+
+          </text>
+
+          <text
+            x="60"
+            y="230"
+            class="value">
+
+            Feature Engineering / Model Development
+
+          </text>
+
+
+          <!-- Statistics -->
+
+          <text
+            x="40"
+            y="285"
+            class="label">
+
+            REPOSITORY
+
+          </text>
+
+
+          <text
+            x="40"
+            y="315"
+            class="value">
+
+            COMMITS
+
+          </text>
+
+          <text
+            x="40"
+            y="338"
+            class="title">
+
+            {commit_count}
+
+          </text>
+
+
+          <text
+            x="200"
+            y="315"
+            class="value">
+
+            BRANCH
+
+          </text>
+
+          <text
+            x="200"
+            y="338"
+            class="title">
+
+            {branch}
+
+          </text>
+
+
+          <text
+            x="360"
+            y="315"
+            class="value">
+
+            AUTHOR
+
+          </text>
+
+          <text
+            x="360"
+            y="338"
+            class="title">
+
+            {author}
+
+          </text>
+
+
+          <!-- Latest commit -->
+
+          <text
+            x="40"
+            y="375"
+            class="label">
+
+            LATEST COMMIT
+
+          </text>
+
+          <text
+            x="40"
+            y="397"
+            class="value">
+
+            {last_commit[:75]}
+
+          </text>
+
+
+          <text
+            x="680"
+            y="397"
+            class="label">
+
+            AUTO-UPDATED
+
+          </text>
+
+
+          </svg>'''
+
+          Path(
+              "assets/project-status.svg"
+          ).write_text(
+              svg,
               encoding="utf-8"
           )
 
           PY
 
-      # --------------------------------------------------
-      # 5. Commit changes
-      # --------------------------------------------------
+      # -------------------------------
+      # Commit generated SVG
+      # -------------------------------
 
-      - name: Commit README update
+      - name: Commit Project UI
         run: |
 
           git config user.name \
@@ -289,16 +585,16 @@ jobs:
           git config user.email \
             "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add README.md
+          git add assets/project-status.svg
 
           if git diff --cached --quiet; then
 
-            echo "No README changes detected."
+            echo "No UI changes detected."
 
           else
 
             git commit \
-              -m "chore: update project status"
+              -m "chore: update project status UI"
 
             git push
 
