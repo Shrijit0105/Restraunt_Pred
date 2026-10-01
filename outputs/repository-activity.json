@@ -1,0 +1,15 @@
+{
+  "repository": "Shrijit0105/Restraunt_Pred",
+  "event": "push",
+  "branch": "main",
+  "latest_commit": {
+    "hash": "c5377eae0746d81bde9133daea95c40249e790e6",
+    "message": "Refactor repository activity workflow",
+    "author": "Shrijit Sengupta",
+    "date": "2026-10-01T23:55:13+05:30"
+  },
+  "statistics": {
+    "total_commits": 12
+  },
+  "updated_at": "2026-10-01 18:25:24 UTC"
+}
