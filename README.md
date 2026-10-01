@@ -447,8 +447,6 @@ Python → Data Science → Machine Learning → AI Engineering
 
 ## 🚧 Project Status
 
-## 🚧 Project Status
-
 <p align="center">
   <img
     src="./assets/project-status.svg"
