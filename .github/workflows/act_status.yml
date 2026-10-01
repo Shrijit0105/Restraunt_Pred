@@ -575,27 +575,28 @@ jobs:
       # -------------------------------
       # Commit generated SVG
       # -------------------------------
-
-      - name: Commit Project UI
+      - name: Configure Git
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git config user.name \
-            "github-actions[bot]"
-
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
-
+      - name: Commit project status UI
+        run: |
           git add assets/project-status.svg
 
           if git diff --cached --quiet; then
-
-            echo "No UI changes detected."
-
-          else
-
-            git commit \
-              -m "chore: update project status UI"
-
-            git push
-
+            echo "No changes to project status UI."
+            exit 0
           fi
+
+          git commit -m "chore: update project status UI"
+
+      - name: Sync with remote
+        run: |
+          git fetch origin main
+          git rebase origin/main
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main
+    
