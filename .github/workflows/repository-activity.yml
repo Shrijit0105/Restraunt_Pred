@@ -1,0 +1,275 @@
+name: Repository Activity Tracker
+
+on:
+  push:
+    branches:
+      - "**"
+
+  pull_request:
+    types:
+      - opened
+      - closed
+      - synchronize
+
+  issues:
+    types:
+      - opened
+      - closed
+      - reopened
+
+  workflow_dispatch:
+
+  schedule:
+    # Runs once every day
+    - cron: "0 18 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  detect-activity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate repository activity report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python <<'PY'
+          import json
+          import os
+          import subprocess
+          from datetime import datetime, timezone
+
+          def run(command):
+              return subprocess.check_output(
+                  command,
+                  shell=True,
+                  text=True
+              ).strip()
+
+          # Latest commit information
+          commit_hash = run("git rev-parse HEAD")
+          commit_message = run("git log -1 --pretty=%s")
+          commit_author = run("git log -1 --pretty=%an")
+          commit_date = run("git log -1 --format=%aI")
+
+          # Repository statistics
+          total_commits = int(run("git rev-list --count HEAD"))
+
+          branches = run(
+              "git for-each-ref --format='%(refname:short)' refs/remotes/origin/"
+          ).splitlines()
+
+          # Detect commonly used programming languages
+          extensions = {}
+
+          for root, dirs, files in os.walk("."):
+              dirs[:] = [
+                  d for d in dirs
+                  if d not in {
+                      ".git",
+                      ".github",
+                      "__pycache__",
+                      ".ipynb_checkpoints",
+                      "node_modules"
+                  }
+              ]
+
+              for file in files:
+                  extension = os.path.splitext(file)[1].lower()
+
+                  if extension:
+                      extensions[extension] = extensions.get(extension, 0) + 1
+
+          extension_map = {
+              ".py": "Python",
+              ".ipynb": "Jupyter Notebook",
+              ".js": "JavaScript",
+              ".ts": "TypeScript",
+              ".html": "HTML",
+              ".css": "CSS",
+              ".cpp": "C++",
+              ".c": "C",
+              ".java": "Java",
+              ".sql": "SQL",
+              ".md": "Markdown",
+              ".yml": "YAML",
+              ".yaml": "YAML",
+              ".json": "JSON"
+          }
+
+          languages = {}
+
+          for extension, count in extensions.items():
+              language = extension_map.get(extension)
+
+              if language:
+                  languages[language] = languages.get(language, 0) + count
+
+          languages = dict(
+              sorted(
+                  languages.items(),
+                  key=lambda item: item[1],
+                  reverse=True
+              )
+          )
+
+          activity = {
+              "repository": os.environ.get("GITHUB_REPOSITORY"),
+              "generated_at": datetime.now(
+                  timezone.utc
+              ).isoformat(),
+
+              "latest_commit": {
+                  "hash": commit_hash,
+                  "message": commit_message,
+                  "author": commit_author,
+                  "date": commit_date
+              },
+
+              "statistics": {
+                  "total_commits": total_commits,
+                  "branches_detected": len(branches),
+                  "languages": languages
+              },
+
+              "trigger": {
+                  "event": os.environ.get("GITHUB_EVENT_NAME"),
+                  "branch": os.environ.get("GITHUB_REF_NAME")
+              }
+          }
+
+          os.makedirs("outputs", exist_ok=True)
+
+          with open(
+              "outputs/repository-activity.json",
+              "w",
+              encoding="utf-8"
+          ) as file:
+              json.dump(
+                  activity,
+                  file,
+                  indent=2,
+                  ensure_ascii=False
+              )
+
+          print(json.dumps(activity, indent=2))
+          PY
+
+      - name: Update activity section
+        run: |
+          python <<'PY'
+          import json
+          from pathlib import Path
+
+          activity_file = Path(
+              "outputs/repository-activity.json"
+          )
+
+          readme_file = Path("README.md")
+
+          if not activity_file.exists():
+              print("Activity report not found.")
+              raise SystemExit(1)
+
+          if not readme_file.exists():
+              print("README.md not found.")
+              raise SystemExit(0)
+
+          data = json.loads(
+              activity_file.read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          commit = data["latest_commit"]
+          stats = data["statistics"]
+          trigger = data["trigger"]
+
+          languages = stats["languages"]
+
+          language_text = (
+              ", ".join(
+                  f"{name} ({count})"
+                  for name, count in list(
+                      languages.items()
+                  )[:6]
+              )
+              if languages
+              else "No recognized source files"
+          )
+
+          activity_section = f"""<!-- ACTIVITY_START -->
+
+## ⚡ Repository Activity
+
+| Metric | Current Activity |
+|---|---|
+| Latest Commit | `{commit["message"]}` |
+| Author | {commit["author"]} |
+| Commit | `{commit["hash"][:7]}` |
+| Event | `{trigger["event"]}` |
+| Branch | `{trigger["branch"]}` |
+| Total Commits | `{stats["total_commits"]}` |
+| Detected Languages | {language_text} |
+| Last Updated | `{data["generated_at"]}` |
+
+> This section is automatically updated using GitHub Actions.
+
+<!-- ACTIVITY_END -->"""
+
+          readme = readme_file.read_text(
+              encoding="utf-8"
+          )
+
+          start_marker = "<!-- ACTIVITY_START -->"
+          end_marker = "<!-- ACTIVITY_END -->"
+
+          if (
+              start_marker in readme
+              and end_marker in readme
+          ):
+              start = readme.index(start_marker)
+              end = readme.index(end_marker) + len(end_marker)
+
+              readme = (
+                  readme[:start]
+                  + activity_section
+                  + readme[end:]
+              )
+
+          else:
+              readme += (
+                  "\n\n"
+                  + activity_section
+                  + "\n"
+              )
+
+          readme_file.write_text(
+              readme,
+              encoding="utf-8"
+          )
+          PY
+
+      - name: Commit generated activity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add outputs/repository-activity.json README.md
+
+          if git diff --cached --quiet; then
+            echo "No activity changes detected."
+            exit 0
+          fi
+
+          git commit \
+            -m "chore: update repository activity"
+
+          git push
