@@ -3,7 +3,8 @@ name: Repository Activity Tracker
 on:
   push:
     branches:
-      - "**"
+      - main
+      - master
 
   pull_request:
     types:
@@ -20,256 +21,206 @@ on:
   workflow_dispatch:
 
   schedule:
-    # Runs once every day
     - cron: "0 18 * * *"
 
 permissions:
   contents: write
 
 jobs:
-  detect-activity:
+  activity:
+    name: Update Repository Activity
     runs-on: ubuntu-latest
 
     steps:
+
+      # --------------------------------------------------
+      # 1. Checkout repository
+      # --------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.ref_name }}
 
-      - name: Generate repository activity report
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # --------------------------------------------------
+      # 2. Generate activity information
+      # --------------------------------------------------
+
+      - name: Generate activity report
+        shell: bash
         run: |
-          python <<'PY'
-          import json
-          import os
-          import subprocess
-          from datetime import datetime, timezone
 
-          def run(command):
-              return subprocess.check_output(
-                  command,
-                  shell=True,
-                  text=True
-              ).strip()
+          mkdir -p outputs
 
-          # Latest commit information
-          commit_hash = run("git rev-parse HEAD")
-          commit_message = run("git log -1 --pretty=%s")
-          commit_author = run("git log -1 --pretty=%an")
-          commit_date = run("git log -1 --format=%aI")
+          REPO="${GITHUB_REPOSITORY}"
+          EVENT="${GITHUB_EVENT_NAME}"
+          BRANCH="${GITHUB_REF_NAME}"
 
-          # Repository statistics
-          total_commits = int(run("git rev-list --count HEAD"))
+          COMMIT_HASH=$(git rev-parse HEAD)
 
-          branches = run(
-              "git for-each-ref --format='%(refname:short)' refs/remotes/origin/"
-          ).splitlines()
+          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
 
-          # Detect commonly used programming languages
-          extensions = {}
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
 
-          for root, dirs, files in os.walk("."):
-              dirs[:] = [
-                  d for d in dirs
-                  if d not in {
-                      ".git",
-                      ".github",
-                      "__pycache__",
-                      ".ipynb_checkpoints",
-                      "node_modules"
-                  }
-              ]
+          COMMIT_DATE=$(git log -1 --format=%aI)
 
-              for file in files:
-                  extension = os.path.splitext(file)[1].lower()
+          TOTAL_COMMITS=$(git rev-list --count HEAD)
 
-                  if extension:
-                      extensions[extension] = extensions.get(extension, 0) + 1
+          UPDATED=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
-          extension_map = {
-              ".py": "Python",
-              ".ipynb": "Jupyter Notebook",
-              ".js": "JavaScript",
-              ".ts": "TypeScript",
-              ".html": "HTML",
-              ".css": "CSS",
-              ".cpp": "C++",
-              ".c": "C",
-              ".java": "Java",
-              ".sql": "SQL",
-              ".md": "Markdown",
-              ".yml": "YAML",
-              ".yaml": "YAML",
-              ".json": "JSON"
+          cat > outputs/repository-activity.json <<EOF
+          {
+            "repository": "$REPO",
+            "event": "$EVENT",
+            "branch": "$BRANCH",
+            "latest_commit": {
+              "hash": "$COMMIT_HASH",
+              "message": "$COMMIT_MESSAGE",
+              "author": "$COMMIT_AUTHOR",
+              "date": "$COMMIT_DATE"
+            },
+            "statistics": {
+              "total_commits": $TOTAL_COMMITS
+            },
+            "updated_at": "$UPDATED"
           }
+          EOF
 
-          languages = {}
+          echo "----------------------------------------"
+          echo "Repository Activity"
+          echo "----------------------------------------"
+          echo "Repository: $REPO"
+          echo "Event:      $EVENT"
+          echo "Branch:     $BRANCH"
+          echo "Commit:     $COMMIT_HASH"
+          echo "Author:     $COMMIT_AUTHOR"
+          echo "Commits:    $TOTAL_COMMITS"
+          echo "Updated:    $UPDATED"
+          echo "----------------------------------------"
 
-          for extension, count in extensions.items():
-              language = extension_map.get(extension)
+      # --------------------------------------------------
+      # 3. Update README
+      # --------------------------------------------------
 
-              if language:
-                  languages[language] = languages.get(language, 0) + count
-
-          languages = dict(
-              sorted(
-                  languages.items(),
-                  key=lambda item: item[1],
-                  reverse=True
-              )
-          )
-
-          activity = {
-              "repository": os.environ.get("GITHUB_REPOSITORY"),
-              "generated_at": datetime.now(
-                  timezone.utc
-              ).isoformat(),
-
-              "latest_commit": {
-                  "hash": commit_hash,
-                  "message": commit_message,
-                  "author": commit_author,
-                  "date": commit_date
-              },
-
-              "statistics": {
-                  "total_commits": total_commits,
-                  "branches_detected": len(branches),
-                  "languages": languages
-              },
-
-              "trigger": {
-                  "event": os.environ.get("GITHUB_EVENT_NAME"),
-                  "branch": os.environ.get("GITHUB_REF_NAME")
-              }
-          }
-
-          os.makedirs("outputs", exist_ok=True)
-
-          with open(
-              "outputs/repository-activity.json",
-              "w",
-              encoding="utf-8"
-          ) as file:
-              json.dump(
-                  activity,
-                  file,
-                  indent=2,
-                  ensure_ascii=False
-              )
-
-          print(json.dumps(activity, indent=2))
-          PY
-
-      - name: Update activity section
+      - name: Update README activity section
+        shell: bash
         run: |
-          python <<'PY'
-          import json
+
+          START="<!-- ACTIVITY_START -->"
+          END="<!-- ACTIVITY_END -->"
+
+          COMMIT_HASH=$(git rev-parse HEAD)
+          COMMIT_SHORT=${COMMIT_HASH:0:7}
+
+          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+
+          TOTAL_COMMITS=$(git rev-list --count HEAD)
+
+          EVENT="${GITHUB_EVENT_NAME}"
+
+          BRANCH="${GITHUB_REF_NAME}"
+
+          UPDATED=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          cat > /tmp/activity.md <<EOF
+          <!-- ACTIVITY_START -->
+
+          ## ⚡ Repository Activity
+
+          | Metric | Value |
+          |---|---|
+          | Latest Commit | \`$COMMIT_MESSAGE\` |
+          | Author | $COMMIT_AUTHOR |
+          | Commit | \`$COMMIT_SHORT\` |
+          | Event | \`$EVENT\` |
+          | Branch | \`$BRANCH\` |
+          | Total Commits | \`$TOTAL_COMMITS\` |
+          | Last Updated | \`$UPDATED\` |
+
+          > Automatically generated by GitHub Actions.
+
+          <!-- ACTIVITY_END -->
+          EOF
+
+          if grep -q "$START" README.md && grep -q "$END" README.md; then
+
+            python3 <<'PY'
           from pathlib import Path
 
-          activity_file = Path(
-              "outputs/repository-activity.json"
+          readme = Path("README.md")
+          activity = Path("/tmp/activity.md")
+
+          text = readme.read_text(encoding="utf-8")
+          new_activity = activity.read_text(encoding="utf-8").strip()
+
+          start = "<!-- ACTIVITY_START -->"
+          end = "<!-- ACTIVITY_END -->"
+
+          start_index = text.index(start)
+          end_index = text.index(end) + len(end)
+
+          updated = (
+              text[:start_index]
+              + new_activity
+              + text[end_index:]
           )
 
-          readme_file = Path("README.md")
-
-          if not activity_file.exists():
-              print("Activity report not found.")
-              raise SystemExit(1)
-
-          if not readme_file.exists():
-              print("README.md not found.")
-              raise SystemExit(0)
-
-          data = json.loads(
-              activity_file.read_text(
-                  encoding="utf-8"
-              )
-          )
-
-          commit = data["latest_commit"]
-          stats = data["statistics"]
-          trigger = data["trigger"]
-
-          languages = stats["languages"]
-
-          language_text = (
-              ", ".join(
-                  f"{name} ({count})"
-                  for name, count in list(
-                      languages.items()
-                  )[:6]
-              )
-              if languages
-              else "No recognized source files"
-          )
-
-          activity_section = f"""<!-- ACTIVITY_START -->
-
-## ⚡ Repository Activity
-
-| Metric | Current Activity |
-|---|---|
-| Latest Commit | `{commit["message"]}` |
-| Author | {commit["author"]} |
-| Commit | `{commit["hash"][:7]}` |
-| Event | `{trigger["event"]}` |
-| Branch | `{trigger["branch"]}` |
-| Total Commits | `{stats["total_commits"]}` |
-| Detected Languages | {language_text} |
-| Last Updated | `{data["generated_at"]}` |
-
-> This section is automatically updated using GitHub Actions.
-
-<!-- ACTIVITY_END -->"""
-
-          readme = readme_file.read_text(
-              encoding="utf-8"
-          )
-
-          start_marker = "<!-- ACTIVITY_START -->"
-          end_marker = "<!-- ACTIVITY_END -->"
-
-          if (
-              start_marker in readme
-              and end_marker in readme
-          ):
-              start = readme.index(start_marker)
-              end = readme.index(end_marker) + len(end_marker)
-
-              readme = (
-                  readme[:start]
-                  + activity_section
-                  + readme[end:]
-              )
-
-          else:
-              readme += (
-                  "\n\n"
-                  + activity_section
-                  + "\n"
-              )
-
-          readme_file.write_text(
-              readme,
-              encoding="utf-8"
-          )
+          readme.write_text(updated, encoding="utf-8")
           PY
 
-      - name: Commit generated activity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          else
 
-          git add outputs/repository-activity.json README.md
+            printf "\n\n$(cat /tmp/activity.md)\n" >> README.md
+
+          fi
+
+      # --------------------------------------------------
+      # 4. Show changes
+      # --------------------------------------------------
+
+      - name: Check generated changes
+        run: |
+
+          echo "Changed files:"
+          git status --short
+
+          echo ""
+          echo "README activity:"
+          grep -A15 \
+            "<!-- ACTIVITY_START -->" \
+            README.md || true
+
+      # --------------------------------------------------
+      # 5. Commit changes
+      # --------------------------------------------------
+
+      - name: Commit changes
+        run: |
+
+          git config user.name "github-actions[bot]"
+
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+          git add outputs/repository-activity.json
 
           if git diff --cached --quiet; then
-            echo "No activity changes detected."
+            echo "No changes detected."
             exit 0
           fi
 
           git commit \
             -m "chore: update repository activity"
 
-          git push
+      # --------------------------------------------------
+      # 6. Push changes
+      # --------------------------------------------------
+
+      - name: Push changes
+        run: |
+
+          git push origin HEAD:${GITHUB_REF_NAME}
