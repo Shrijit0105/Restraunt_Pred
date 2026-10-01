@@ -1,0 +1,305 @@
+name: Project Activity & Status
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+  pull_request:
+    types:
+      - opened
+      - closed
+      - synchronize
+
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 18 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  project-status:
+    name: Detect Project Status
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------------------------
+      # 1. Checkout repository
+      # --------------------------------------------------
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --------------------------------------------------
+      # 2. Detect project activity
+      # --------------------------------------------------
+
+      - name: Detect project stage
+        shell: bash
+        run: |
+
+          echo "Detecting project activity..."
+
+          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+
+          CHANGED_FILES=$(git diff-tree \
+            --no-commit-id \
+            --name-only \
+            -r HEAD)
+
+          echo "Latest commit:"
+          echo "$COMMIT_MESSAGE"
+
+          echo ""
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          STAGE="Project Development"
+          FOCUS="General Project Development"
+
+          if echo "$CHANGED_FILES" | grep -Eqi \
+            "01_EDA|eda|exploration|visualization"; then
+
+            STAGE="Exploratory Data Analysis"
+            FOCUS="Exploratory Data Analysis"
+
+          elif echo "$CHANGED_FILES" | grep -Eqi \
+            "02_Preprocessing|preprocess|preprocessing|clean"; then
+
+            STAGE="Data Preprocessing"
+            FOCUS="Data Cleaning & Preprocessing"
+
+          elif echo "$CHANGED_FILES" | grep -Eqi \
+            "feature|engineering"; then
+
+            STAGE="Feature Engineering"
+            FOCUS="Feature Engineering"
+
+          elif echo "$CHANGED_FILES" | grep -Eqi \
+            "03_Model|model|train|training"; then
+
+            STAGE="Model Development"
+            FOCUS="Model Training & Experiments"
+
+          elif echo "$CHANGED_FILES" | grep -Eqi \
+            "04_Model_Evaluation|evaluation|evaluate|metric"; then
+
+            STAGE="Model Evaluation"
+            FOCUS="Model Evaluation & Comparison"
+
+          elif echo "$CHANGED_FILES" | grep -Eqi \
+            "models/|\.pkl$|\.joblib$"; then
+
+            STAGE="Model Development"
+            FOCUS="Trained Model Development"
+
+          elif echo "$CHANGED_FILES" | grep -Eqi \
+            "api|app|deployment|docker|Dockerfile"; then
+
+            STAGE="Deployment"
+            FOCUS="Deployment & Integration"
+
+          fi
+
+          echo "STAGE=$STAGE" >> "$GITHUB_ENV"
+          echo "FOCUS=$FOCUS" >> "$GITHUB_ENV"
+
+      # --------------------------------------------------
+      # 3. Calculate repository progress
+      # --------------------------------------------------
+
+      - name: Calculate project progress
+        shell: bash
+        run: |
+
+          CLEANING=100
+          EDA=100
+          FEATURES=85
+          PREPROCESSING=85
+          TRAINING=60
+          EVALUATION=40
+          OPTIMIZATION=20
+          DEPLOYMENT=0
+
+          if [ "$STAGE" = "Exploratory Data Analysis" ]; then
+            EDA=100
+          fi
+
+          if [ "$STAGE" = "Data Preprocessing" ]; then
+            PREPROCESSING=90
+          fi
+
+          if [ "$STAGE" = "Feature Engineering" ]; then
+            FEATURES=90
+          fi
+
+          if [ "$STAGE" = "Model Development" ]; then
+            TRAINING=75
+          fi
+
+          if [ "$STAGE" = "Model Evaluation" ]; then
+            TRAINING=100
+            EVALUATION=75
+          fi
+
+          if [ "$STAGE" = "Deployment" ]; then
+            TRAINING=100
+            EVALUATION=100
+            OPTIMIZATION=100
+            DEPLOYMENT=50
+          fi
+
+          echo "CLEANING=$CLEANING" >> "$GITHUB_ENV"
+          echo "EDA=$EDA" >> "$GITHUB_ENV"
+          echo "FEATURES=$FEATURES" >> "$GITHUB_ENV"
+          echo "PREPROCESSING=$PREPROCESSING" >> "$GITHUB_ENV"
+          echo "TRAINING=$TRAINING" >> "$GITHUB_ENV"
+          echo "EVALUATION=$EVALUATION" >> "$GITHUB_ENV"
+          echo "OPTIMIZATION=$OPTIMIZATION" >> "$GITHUB_ENV"
+          echo "DEPLOYMENT=$DEPLOYMENT" >> "$GITHUB_ENV"
+
+      # --------------------------------------------------
+      # 4. Update README
+      # --------------------------------------------------
+
+      - name: Update project status
+        shell: bash
+        run: |
+
+          python3 <<'PY'
+
+          from pathlib import Path
+          import os
+
+          readme = Path("README.md")
+
+          text = readme.read_text(
+              encoding="utf-8"
+          )
+
+          start_marker = "<!-- STATUS_START -->"
+          end_marker = "<!-- STATUS_END -->"
+
+          stage = os.environ["STAGE"]
+          focus = os.environ["FOCUS"]
+
+          cleaning = int(os.environ["CLEANING"])
+          eda = int(os.environ["EDA"])
+          features = int(os.environ["FEATURES"])
+          preprocessing = int(os.environ["PREPROCESSING"])
+          training = int(os.environ["TRAINING"])
+          evaluation = int(os.environ["EVALUATION"])
+          optimization = int(os.environ["OPTIMIZATION"])
+          deployment = int(os.environ["DEPLOYMENT"])
+
+          def bar(value):
+
+              total = 20
+
+              filled = round(
+                  value / 100 * total
+              )
+
+              return (
+                  "█" * filled
+                  + "░" * (total - filled)
+              )
+
+          status = f"""<!-- STATUS_START -->
+
+          ## 🚧 Project Status
+
+          **Status:** 🚀 Active Development
+
+          **Current Stage:** 🤖 {stage}
+
+          **Current Focus:** 🔍 {focus}
+
+          ```text
+          Data Collection        ████████████████████ 100%
+          Data Cleaning          {bar(cleaning)} {cleaning}%
+          EDA                    {bar(eda)} {eda}%
+          Feature Engineering    {bar(features)} {features}%
+          Preprocessing          {bar(preprocessing)} {preprocessing}%
+          Model Training         {bar(training)} {training}%
+          Model Evaluation       {bar(evaluation)} {evaluation}%
+          Optimization           {bar(optimization)} {optimization}%
+          Deployment             {bar(deployment)} {deployment}%
+          ```
+
+          > 🔄 Automatically updated by GitHub Actions based on repository activity.
+
+          <!-- STATUS_END -->"""
+
+          status = status.replace(
+              "          ",
+              ""
+          )
+
+          if (
+              start_marker in text
+              and end_marker in text
+          ):
+
+              start = text.index(
+                  start_marker
+              )
+
+              end = text.index(
+                  end_marker
+              ) + len(end_marker)
+
+              text = (
+                  text[:start]
+                  + status
+                  + text[end:]
+              )
+
+          else:
+
+              text += (
+                  "\n\n"
+                  + status
+                  + "\n"
+              )
+
+          readme.write_text(
+              text,
+              encoding="utf-8"
+          )
+
+          PY
+
+      # --------------------------------------------------
+      # 5. Commit changes
+      # --------------------------------------------------
+
+      - name: Commit README update
+        run: |
+
+          git config user.name \
+            "github-actions[bot]"
+
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+
+          if git diff --cached --quiet; then
+
+            echo "No README changes detected."
+
+          else
+
+            git commit \
+              -m "chore: update project status"
+
+            git push
+
+          fi
