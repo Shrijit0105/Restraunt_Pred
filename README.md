@@ -447,22 +447,15 @@ Python → Data Science → Machine Learning → AI Engineering
 
 ## 🚧 Project Status
 
-**Status:** 🚀 Active Development
+## 🚧 Project Status
 
-**Current Stage:** 🤖 Project Development
-
-**Current Focus:** 🔍 General Project Development
-
-```text
-Data Collection        ████████████████████ 100%
-Data Cleaning████████████████████ 100%
-EDA████████████████████ 100%
-Feature Engineering    █████████████████░░░ 85%
-Preprocessing█████████████████░░░ 85%
-Model Training         ████████████░░░░░░░░ 60%
-Model Evaluation       ████████░░░░░░░░░░░░ 40%
-Optimization ████░░░░░░░░░░░░░░░░ 20%
-Deployment   ░░░░░░░░░░░░░░░░░░░░ 0%
+<p align="center">
+  <img
+    src="./assets/project-status.svg"
+    width="900"
+    alt="Restaurant Rating Prediction Project Status"
+  />
+</p>
 ```
 
 > 🔄 Automatically updated by GitHub Actions based on repository activity.
