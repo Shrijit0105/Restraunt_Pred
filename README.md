@@ -96,7 +96,7 @@ Target Variable:
 - Decision Tree Regressor
 - Random Forest Regressor
 - Gradient Boosting Regressor --> 
-##These shall be applied later when the preprocessing process will be done 
+## These shall be applied later when the preprocessing process will be done 
 
 ---
 
