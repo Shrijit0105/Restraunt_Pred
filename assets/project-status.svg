@@ -1,0 +1,477 @@
+<svg
+width="900"
+height="430"
+viewBox="0 0 900 430"
+xmlns="http://www.w3.org/2000/svg">
+
+<defs>
+
+  <linearGradient
+    id="bg"
+    x1="0%"
+    y1="0%"
+    x2="100%"
+    y2="100%">
+
+    <stop
+      offset="0%"
+      stop-color="#050505"/>
+
+    <stop
+      offset="100%"
+      stop-color="#111111"/>
+
+  </linearGradient>
+
+  <filter
+    id="glow">
+
+    <feGaussianBlur
+      stdDeviation="3"
+      result="blur"/>
+
+    <feMerge>
+
+      <feMergeNode
+        in="blur"/>
+
+      <feMergeNode
+        in="SourceGraphic"/>
+
+    </feMerge>
+
+  </filter>
+
+  <style>
+
+    .title {
+      font-family:
+      monospace;
+
+      font-size:
+      24px;
+
+      font-weight:
+      bold;
+
+      fill:
+      #ffffff;
+    }
+
+    .subtitle {
+      font-family:
+      monospace;
+
+      font-size:
+      12px;
+
+      fill:
+      #777777;
+    }
+
+    .label {
+      font-family:
+      monospace;
+
+      font-size:
+      11px;
+
+      fill:
+      #888888;
+    }
+
+    .value {
+      font-family:
+      monospace;
+
+      font-size:
+      14px;
+
+      fill:
+      #ffffff;
+    }
+
+    .status {
+      font-family:
+      monospace;
+
+      font-size:
+      13px;
+
+      font-weight:
+      bold;
+
+      fill:
+      #ffffff;
+    }
+
+    .bar-bg {
+      fill:
+      #252525;
+    }
+
+    .bar {
+      fill:
+      #ffffff;
+    }
+
+    .pulse {
+      animation:
+      pulse 1.6s
+      infinite;
+    }
+
+    .scan {
+      animation:
+      scan 4s
+      linear
+      infinite;
+    }
+
+    @keyframes pulse {
+
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.25;
+      }
+
+      100% {
+        opacity: 1;
+      }
+
+    }
+
+    @keyframes scan {
+
+      0% {
+        transform:
+        translateX(-900px);
+      }
+
+      100% {
+        transform:
+        translateX(900px);
+      }
+
+    }
+
+  </style>
+
+</defs>
+
+
+<!-- Background -->
+
+<rect
+  width="900"
+  height="430"
+  rx="18"
+  fill="url(#bg)"
+  stroke="#333333"/>
+
+
+<!-- Animated scan -->
+
+<rect
+  class="scan"
+  x="0"
+  y="0"
+  width="2"
+  height="430"
+  opacity="0.25"
+  fill="#ffffff"/>
+
+
+<!-- Header -->
+
+<text
+  x="40"
+  y="48"
+  class="title">
+
+  RESTAURANT RATING PREDICTION
+
+</text>
+
+<text
+  x="40"
+  y="70"
+  class="subtitle">
+
+  AI / ML PORTFOLIO PROJECT
+
+</text>
+
+
+<!-- Status -->
+
+<circle
+  cx="790"
+  cy="48"
+  r="7"
+  fill="#ffffff"
+  class="pulse"
+  filter="url(#glow)"/>
+
+<text
+  x="805"
+  y="53"
+  class="status">
+
+  ACTIVE
+
+</text>
+
+
+<!-- Pipeline -->
+
+<text
+  x="40"
+  y="115"
+  class="label">
+
+  ML PIPELINE
+
+</text>
+
+
+<!-- Pipeline bars -->
+
+<text
+  x="40"
+  y="145"
+  class="label">
+
+  DATA
+
+</text>
+
+<rect
+  x="90"
+  y="136"
+  width="120"
+  height="10"
+  rx="5"
+  class="bar-bg"/>
+
+<rect
+  x="90"
+  y="136"
+  width="120"
+  height="10"
+  rx="5"
+  class="bar"/>
+
+
+<text
+  x="240"
+  y="145"
+  class="label">
+
+  CLEANING
+
+</text>
+
+<rect
+  x="315"
+  y="136"
+  width="120"
+  height="10"
+  rx="5"
+  class="bar-bg"/>
+
+<rect
+  x="315"
+  y="136"
+  width="120"
+  height="10"
+  rx="5"
+  class="bar"/>
+
+
+<text
+  x="465"
+  y="145"
+  class="label">
+
+  FEATURES
+
+</text>
+
+<rect
+  x="540"
+  y="136"
+  width="120"
+  height="10"
+  rx="5"
+  class="bar-bg"/>
+
+<rect
+  x="540"
+  y="136"
+  width="102"
+  height="10"
+  rx="5"
+  class="bar"/>
+
+
+<text
+  x="690"
+  y="145"
+  class="label">
+
+  MODEL
+
+</text>
+
+<rect
+  x="745"
+  y="136"
+  width="115"
+  height="10"
+  rx="5"
+  class="bar-bg"/>
+
+<rect
+  x="745"
+  y="136"
+  width="69"
+  height="10"
+  rx="5"
+  class="bar"/>
+
+
+<!-- Current focus -->
+
+<rect
+  x="40"
+  y="180"
+  width="820"
+  height="70"
+  rx="10"
+  fill="#0b0b0b"
+  stroke="#292929"/>
+
+<text
+  x="60"
+  y="207"
+  class="label">
+
+  CURRENT FOCUS
+
+</text>
+
+<text
+  x="60"
+  y="230"
+  class="value">
+
+  Feature Engineering / Model Development
+
+</text>
+
+
+<!-- Statistics -->
+
+<text
+  x="40"
+  y="285"
+  class="label">
+
+  REPOSITORY
+
+</text>
+
+
+<text
+  x="40"
+  y="315"
+  class="value">
+
+  COMMITS
+
+</text>
+
+<text
+  x="40"
+  y="338"
+  class="title">
+
+  0
+
+</text>
+
+
+<text
+  x="200"
+  y="315"
+  class="value">
+
+  BRANCH
+
+</text>
+
+<text
+  x="200"
+  y="338"
+  class="title">
+
+  main
+
+</text>
+
+
+<text
+  x="360"
+  y="315"
+  class="value">
+
+  AUTHOR
+
+</text>
+
+<text
+  x="360"
+  y="338"
+  class="title">
+
+  Unknown
+
+</text>
+
+
+<!-- Latest commit -->
+
+<text
+  x="40"
+  y="375"
+  class="label">
+
+  LATEST COMMIT
+
+</text>
+
+<text
+  x="40"
+  y="397"
+  class="value">
+
+  Repository activity
+
+</text>
+
+
+<text
+  x="680"
+  y="397"
+  class="label">
+
+  AUTO-UPDATED
+
+</text>
+
+
+</svg>
